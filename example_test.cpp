@@ -27,16 +27,6 @@ TEST(JSON, LOADSTRING){
     EXPECT_EQ(first, last);
 }
 
-TEST(JSON, LOADSTRING_1){
-    using namespace BMSTU;
-    std::stringstream ss;
-    ss.str("\"some value\\ \"");
-    Document first = Load(ss);
-    Print(first,std::cout);
-   // Document last = Document(std::string(("s\"ome_\"string")));
-    //Print(last, std::cout);
-}
-
 ///LOAD STRING EXCEPTIONS
 TEST(LOADSTRING_EXC, string_parsing_error){
     using namespace BMSTU;
