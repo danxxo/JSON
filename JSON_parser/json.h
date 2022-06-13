@@ -139,22 +139,24 @@ namespace BMSTU {
     };
 
 ///TODO/??????????????????
-//Node LoadString(std::istream &input) {
+
+//    Node LoadString(std::istream &input){
 //        auto it = std::istreambuf_iterator<char>(input);
 //        auto end = std::istreambuf_iterator<char>();
 //        std::string s;
-//        while (true) {
-//            if (it == end) {
-//                throw ParsingError("string parsing error");
+//        while (true){
+//            if(it == end){
+//                throw ParsingError("String parsing error");
 //            }
 //            const char ch = *it;
-//            if (ch == '"') {
+//            if(ch == '"'){
 //                ++it;
 //                break;
-//            } else if (ch == '\\') {
+//            }
+//            else if(ch == '\\'){
 //                ++it;
-//                if (it == end) {
-//                    throw ParsingError("string parsing error");
+//                if(it == end){
+//                    throw ParsingError("String parsing error");
 //                }
 //                const char escaped_char = *it;
 //                switch (escaped_char) {
@@ -174,18 +176,16 @@ namespace BMSTU {
 //                        s.push_back('\\');
 //                        break;
 //                    default:
-//                        throw ParsingError("unrecognized escape symbol");
+//                        throw ParsingError("Unrecognized escape sequence \""s + escaped_char + "\""s);
 //                }
-//            } else if (ch == '\n' || ch == '\r') {
-//                throw ParsingError("Unexpexted end of line"s);
-//            } else {
-//                s.push_back(ch);
-//            }
+//            } else if (ch == '\n' || ch == '\r') throw ParsingError("Unexpected end of line"s);
+//            else s.push_back(ch);
 //            ++it;
 //        }
 //        return Node(std::move(s));
 //    };
 
+//////////////
 // if (ch == '"') {
 //                if(++it != end){
 //                    s.push_back('"');
@@ -208,51 +208,53 @@ namespace BMSTU {
     Node LoadNode(std::istream &input);
 
     Node LoadString(std::istream &input) {
-        auto it = std::istreambuf_iterator<char>(input);
+        auto iterator = std::istreambuf_iterator<char>(input);
         auto end = std::istreambuf_iterator<char>();
-        std::string s;
-        while (true) {
-            if (it == end) {
+        std::string my_string;
+        while (iterator != end) {
+            const char ch = *iterator;
+            if (iterator != end){
+                    switch (ch) {
+                        case '\"':{
+                            if (++iterator != end){
+//                            my_string.push_back('"');
+//                            my_string.push_back(*iterator);
+                            iterator = end;
+                            }
+                            break;
+                        }
+
+                        case '\\':{
+                            my_string.push_back('\\');
+                            break;
+                        }
+                        case '\n':{
+                            my_string.push_back('\n');
+                            break;
+                        }
+                        case '\t':{
+                            my_string.push_back('\t');
+                            break;
+                        }
+                        case '\r':{
+                            my_string.push_back('\r');
+                            break;
+                        }
+                        default:{
+                            my_string.push_back(ch);
+                            break;
+                        }
+                    }
+                } else if(iterator == end){
                 throw ParsingError("string parsing error");
+            } else my_string.push_back(ch);
+            if (iterator == end){
+                break;
+            } else
+            ++iterator;
             }
-            const char ch = *it;
-                if (ch == '"') {
-                    if(++it != end){
-                    s.push_back('"');
-                    s.push_back(*it);
-                    } else
-                        break;
-            } else if (ch == '\\') {
-                ++it;
-                if (it == end) {
-                    throw ParsingError("string parsing error");
-                }
-                const char escaped_char = *it;
-                switch (escaped_char) {
-                    case 'n':
-                        s.push_back('\n');
-                        break;
-                    case 't':
-                        s.push_back('\t');
-                        break;
-                    case 'r':
-                        s.push_back('\r');
-                        break;
-                    case '\\':
-                        s.push_back('\\');
-                        break;
-                    default:
-                        throw ParsingError("unrecognized escape symbol");
-                }
-            } else if (ch == '\n' || ch == '\r') {
-                throw ParsingError("Unexpexted end of line"s);
-            } else {
-                s.push_back(ch);
-            }
-            ++it;
+        return Node(std::move(my_string));
         }
-        return Node(std::move(s));
-    };
 
     std::string LoadLiteral(std::istream &input) {
         std::string s;
@@ -262,18 +264,15 @@ namespace BMSTU {
         return s;
     }
 
-    /////////////////////////???????????????////////////////////
     Node LoadArray(std::istream &input) {
         Array result;
-        for (char c; input >> c && c != ']';) {
+        for (char c ; input >> c && c != ']';) {
             if (c != ',') {
                 input.putback(c);
             }
             result.push_back(LoadNode(input));
         }
-        if (!input) {
-            throw ParsingError("array parsing error");
-        }
+        if (!input) throw ParsingError("ARRAY parsing exception");
         return Node(std::move(result));
     }
 
@@ -392,7 +391,7 @@ namespace BMSTU {
             case '"':
                 return LoadString(input);
             case 't':
-                [[fallthrough]];
+                [[fallthrough]]; //так как 't' и 'f' относятся к LOADBOOL
             case 'f':
                 input.putback(c);
                 return LoadBool(input);
@@ -465,20 +464,20 @@ namespace BMSTU {
         for (const char c: value) {
             switch (c) {
                 case '\r': {
-                    out << "\\r"s;
+                    out << "\r"s;
                     break;
                 }
                 case '\n': {
-                    out << "\\n"s;
+                    out << "\n"s;
                     break;
                 }
                 case '"': {
-                    out << '"';
+                    out << '\"';
                     break;
                 }
                 case '\\': {
                     out << "\\"s;
-                    [[fallthrough]];
+                    break;
                 }
                 default: {
                     out.put(c);
