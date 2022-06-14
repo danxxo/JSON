@@ -279,18 +279,15 @@ namespace BMSTU {
     Node LoadDict(std::istream &input) {
         Dict dict;
         for (char c; input >> c && c != '}';) {
-            if (c != '"') {
-                std::string key = LoadNode(input).AsString();
+            if (c == '"') {
+                std::string key = LoadString(input).AsString();
                 if (input >> c && c == ':') {
-                    if (dict.find(key) != dict.end()) {
-                        throw ParsingError("Duplicate key error"s + key + "");
-                    }
                     dict.emplace(std::move(key), LoadNode(input));
                 } else {
                     throw ParsingError(" : is expected but"s + c + "has been founded"s);
                 }
-            } else if (c != ',') {
-                throw ParsingError(R"(',' is expected but  ')"s + c);
+            } else if (c == ','){
+                throw ParsingError("can't add more than one VALUE");
             }
         }
         return dict;
@@ -442,10 +439,6 @@ namespace BMSTU {
             }
         }
 
-        PrintContext Copy(std::ostream &output) const{
-            return {output, indent, indent_step};
-        }
-
         PrintContext Indented() const {
             return {out, indent, indent_step};
         }
@@ -521,11 +514,13 @@ namespace BMSTU {
                 out << ",\n"s;
             }
             inner_ctx.Indented();
+            ctx.Print_indent();        ///????????
             PrintNode(node, inner_ctx);
         }
         out.put('\n');
         ctx.Print_indent();
         out.put(']');
+        //out.put('\n');
     }
 
     template<>
@@ -544,6 +539,7 @@ namespace BMSTU {
             PrintString(key, ctx.out);
             out << ": "s;
             PrintNode(node, inner_ctx);
+
         }
         out.put('\n');
         ctx.Print_indent();
