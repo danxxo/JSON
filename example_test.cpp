@@ -74,11 +74,19 @@ TEST(LOADBOOL, EXCEPTION){
 }
 
 ///LOAD ARRAY
+///TODO можно еще написать эксепшн чтобы не было лишних запятых
+//[
+//true,
+//true,
+//null,
+//"str1",
+//"str2"
+//    ] в этом массиве после зпт ничего нет
 TEST(JSON, LOADARRAY){
     using namespace BMSTU;
-
+///TODO NUMBER
     std::stringstream ss;
-    ss.str("[true, true, null, \"str1\", \"str2\"   ]");
+    ss.str("[true, true, null, \"str1\", \"str2\"  ]");
     Document first = Load(ss);
     Document last = Document(Array{true, true, {}, std::string("str1"), std::string("str2")});
     EXPECT_EQ(first, last);
@@ -96,11 +104,78 @@ TEST(LOADARRAY, EXCEPTION){
 
 
 
-///LOAD DICT
+///LOAD DICT_ARRAY
+TEST(JSON, LOADDICT_ARRAY_VALUE){
+    using namespace BMSTU;
 
+    std::stringstream ss;
+    ss.str("{\"key_ARRAY\" : [true, null, \"my_string\"]}");
 
+    Document first = Load(ss);
+    Document last = Document(Dict{{std::string("key_ARRAY"), Array{true, {}, std::string("my_string")}}});
 
+    EXPECT_EQ(first, last);
+}
+///LOAD DICT_STRING
+TEST(JSON, LOADDICT_STRING_VALUE){
+    using namespace BMSTU;
 
+    std::stringstream ss;
+    ss.str("{\"key_STRING\" : \"my\tstring\nbetter\\than\tyours\"}");
+
+    Document first = Load(ss);
+    Document last = Document(Dict{{std::string("key_STRING"),
+                                   std::string("my\tstring\nbetter\\than\tyours")}});
+    EXPECT_EQ(first, last);
+}
+///LOAD DICT_BOOL
+TEST(JSON, LOADDICT_BOOL_VALUE){
+    using namespace BMSTU;
+
+    std::stringstream ss;
+    ss.str("{\"key_STRING\" : true}");
+
+    Document first = Load(ss);
+    Document last = Document(Dict{{std::string("key_STRING"), true}});
+    EXPECT_EQ(first, last);
+}
+
+///LOAD DICT_NULL
+TEST(JSON, LOADDICT_NULL_VALUE){
+    using namespace BMSTU;
+
+    std::stringstream ss;
+    ss.str("{\"key_STRING\" : null}");
+
+    Document first = Load(ss);
+    Document last = Document(Dict{{std::string("key_STRING"), {}}});
+    EXPECT_EQ(first, last);
+}
+
+///LOAD DICT_NUM
+///TODO NUM
+
+///LOAD DICT EXCEPTIONS
+
+///can't add more than one VALUE
+TEST(LOADDICT_EXC, MORE_VALUE){
+    using namespace BMSTU;
+
+    std::stringstream ss;
+    ss.str("{\"key_STRING\" : null, true}");
+
+    EXPECT_THROW(Document first = Load(ss), ParsingError);
+}
+
+///NO_DOUBLE_AT
+TEST(LOADDICT_EXC, NO_DOUBLE_AT){
+    using namespace BMSTU;
+
+    std::stringstream ss, ss1;
+    ss.str("{\"key_STRING\"} : true");
+
+    EXPECT_THROW(Document first = Load(ss), ParsingError);
+}
 
 
 
