@@ -243,3 +243,39 @@ ss.str("[{\"BOOL\" : [{\"TRUE\" : true}, {\"FALSE\" : false}]},"
 Document doc = Load(ss);
 Print(doc,std::cout);
 }
+
+///NODE METHODS
+TEST(JSON, NODE_METHODS){
+    using namespace BMSTU;
+
+    std::stringstream stream_int, stream_double, stream_bool, stream_null, stream_Array, stream_Dict;
+
+    stream_int.str("12");
+    stream_double.str("14.653");
+    stream_bool.str("true");
+    stream_Array.str("[1,2,3]");
+    stream_Dict.str("{\"key\" : \"value\"}");
+    stream_null.str("null");
+
+    int value = LoadNode(stream_int).AsInt();
+    EXPECT_EQ(value, 12);
+    std::stringstream int_error("12.421");
+    EXPECT_ANY_THROW(int error = LoadNode(int_error).AsInt());
+
+    double val_double = LoadNode(stream_double).AsDouble();
+    EXPECT_EQ(val_double, 14.653);
+    std::stringstream double_error("true");
+    EXPECT_ANY_THROW(double error = LoadNode(double_error).AsDouble());
+
+    bool val_bool = LoadNode(stream_bool).AsBool();
+    EXPECT_TRUE(val_bool);
+    std::stringstream bool_error("12.421");
+    EXPECT_ANY_THROW(bool error = LoadNode(bool_error).AsBool());
+
+    bool is_null = LoadNode(stream_null).IsNull();
+    EXPECT_TRUE(is_null);
+
+    Array val_Array = LoadNode(stream_Array).AsArray();
+
+    Dict val_Dict = LoadNode(stream_Dict).AsDict();
+}
