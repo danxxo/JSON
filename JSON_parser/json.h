@@ -5,6 +5,7 @@
 #include <variant>
 #include <string>
 #include <sstream>
+#include <fstream>
 
 namespace BMSTU {
     using namespace std;
