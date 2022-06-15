@@ -35,15 +35,36 @@ TEST(LOADSTRING, ESCAPE_SYMBOLS){
     using namespace BMSTU;
 
     std::stringstream ss;
-    ss.str("\"HELLO!\t\\there,\\\n"
-           "there will be the\r tabulation\ttabulation\nhere is\0 the end\"");
+    ss.str("\"hello\\t here is the \\\"quotes\\\"\\nhere is the \\ttabulation\\\\\"");
     Document first = Load(ss);
     Print(first,std::cout);
-    Document last = Document(std::string(("HELLO!\t\\there,\\\n"
-                                          "there will be the\r tabulation\ttabulation\nhere is\0 the end")));
+    Document last = Document(std::string(("hello\t here is the \"quotes\"\nhere is the \ttabulation\\")));
     EXPECT_EQ(first, last);
 }
 
+TEST(LOADSTR_EXC, Unknown_escape){
+    using namespace BMSTU;
+
+    std::stringstream ss("\"Hello\\h\"");
+
+    try {
+        Document doc = BMSTU::Load(ss);
+    }catch (std::exception &exception){
+        EXPECT_STREQ(exception.what(), "Unknown \\h escape symb");
+    }
+}
+
+TEST(LOADSTR_EXC, EOL){
+    using namespace BMSTU;
+
+    std::stringstream ss("\"Hello\n\"");
+
+    try {
+        Document doc = BMSTU::Load(ss);
+    }catch (std::exception &exception){
+        EXPECT_STREQ(exception.what(), "Unexpected EOL");
+    }
+}
 #pragma endregion
 
 #pragma region "LOAD BOOL"
@@ -75,7 +96,12 @@ TEST(LOADBOOL, EXCEPTION){
 
     std::stringstream ss;
     ss.str("flse");
-    EXPECT_THROW(Document first = Load(ss), ParsingError);
+
+    try {
+        Document first = Load(ss);
+    } catch(std::exception &exception){
+        EXPECT_STREQ(exception.what(),  " Failed to parse flse as bool");
+    }
 }
 
 #pragma endregion
@@ -99,12 +125,16 @@ TEST(LOADARRAY, EXCEPTION){
 
     std::stringstream ss;
     ss.str("[[]");
-    EXPECT_THROW(Document first = Load(ss), ParsingError);
+    try{
+        Document doc = Load(ss);
+    } catch (std::exception &exception){
+        ASSERT_STREQ(exception.what(), "ARRAY parsing exception");
+    }
 }
 
 #pragma endregion
 
-#pragma region "LOAD DICT_ARRAY"
+#pragma region "LOAD DICT"
 
 TEST(JSON, LOADDICT_ARRAY_VALUE){
     using namespace BMSTU;
@@ -122,7 +152,7 @@ TEST(JSON, LOADDICT_STRING_VALUE){
     using namespace BMSTU;
 
     std::stringstream ss;
-    ss.str("{\"key_STRING\" : \"my\tstring\nbetter\\than\tyours\"}");
+    ss.str("{\"key_STRING\" : \"my\\tstring\\nbetter\\\\than\\tyours\"}");
 
     Document first = Load(ss);
     Document last = Document(Dict{{std::string("key_STRING"),
@@ -172,7 +202,11 @@ TEST(LOADDICT_EXC, MORE_VALUE){
     std::stringstream ss;
     ss.str("{\"key_STRING\" : null, true}");
 
-    EXPECT_THROW(Document first = Load(ss), ParsingError);
+    try {
+        Document first = Load(ss);
+    } catch(std::exception &exception){
+        EXPECT_STREQ(exception.what(),  "can't add more than one VALUE");
+    }
 }
 
 ///NO_DOUBLE_AT
@@ -182,7 +216,32 @@ TEST(LOADDICT_EXC, NO_DOUBLE_AT){
     std::stringstream ss, ss1;
     ss.str("{\"key_STRING\"} : true");
 
-    EXPECT_THROW(Document first = Load(ss), ParsingError);
+    try {
+        Document first = Load(ss);
+    } catch(std::exception &exception){
+        EXPECT_STREQ(exception.what(),  " : is expected but } has been founded");
+    }
+}
+
+TEST(LOADDICT_EXC, NO_VALUE){
+    std::stringstream ss("{\"wadwd\" :}");
+    try{
+        BMSTU::Document doc = BMSTU::Load(ss);
+    } catch (std::exception &exception){
+        ASSERT_STREQ(exception.what(), "No value");
+    }
+}
+
+TEST(LOADDICT_EXC, parsing_error){
+    using namespace BMSTU;
+
+    std::stringstream ss("{{");
+
+    try {
+        Document doc = BMSTU::Load(ss);
+    }catch (std::exception &exception){
+        EXPECT_STREQ(exception.what(), "DICT parsing exception");
+    }
 }
 
 #pragma endregion
@@ -207,9 +266,24 @@ TEST(NUM_EXCEPTION, NO_DIGIT){
     using namespace BMSTU;
 
     std::stringstream ss;
-    ss.str("[one, two, three]");
+    ss.str("-.10.1");
 
-    EXPECT_THROW(Document first = Load(ss), ParsingError);
+    try{
+        Document doc = Load(ss);
+    } catch (std::exception &exception){
+        ASSERT_STREQ(exception.what(), "digit Error");
+    }
+}
+
+TEST(NUM_EXCEPTION, NUM_ERROR){
+    using namespace BMSTU;
+
+    std::stringstream ss("1.9770e+308");
+        try{
+        Document doc = Load(ss);
+    } catch (std::exception &exception){
+        ASSERT_STREQ(exception.what(), " number error ");
+    }
 }
 
 #pragma endregion
@@ -217,16 +291,13 @@ TEST(NUM_EXCEPTION, NO_DIGIT){
 ///LOAD NODE EXCEPTION NOT EOF
 TEST(LOADNODE, Unexpected_EOF){
     using namespace BMSTU;
-
     std::ifstream input("false path");
-    EXPECT_THROW(Document doc = BMSTU::Load(input), ParsingError);
+    try {
+        Document doc = BMSTU::Load(input);
+    }catch (std::exception &exception){
+        EXPECT_STREQ(exception.what(), " Error unexpected EOF ");
+    }
 }
-
-//TEST(JSON, EOOOOOOOOOOOOOF){
-//    std::ifstream input("/home/nikita/dev/cpp/yap_kurs_Busarov/JSON/popo.txt");
-//    BMSTU::Document doc = BMSTU::Load(input);
-//    BMSTU::Print(doc, std::cout);
-//}
 
 ///PRINT
 TEST(JSON, Print){
@@ -236,7 +307,7 @@ std::stringstream ss;
 ss.str("[{\"BOOL\" : [{\"TRUE\" : true}, {\"FALSE\" : false}]},"
        "{\"NULL\" : null}, {\"NUMBERS\" : [{\"INT\" : 12}, {\"DOUBLE\" : 12.52},"
        "{\"NEGATIVE\" : -123.5}, {\"EXPONENT\" : -13e-10}]}, "
-       "{\"STRING\" : \"my\\\n\tstring\"}, "
+       "{\"STRING\" : \"my\\\\\\n\\tstring\"}, "
        "{\"ARRAY\" : [{\"ARRAY_STRING\" : [\"string1\", \"string2\"]}, "
        "{\"ARRAY_NUM\" : [1,-2,2.542]}]}, {\"DICT\" : \"dict\"}]");
 
