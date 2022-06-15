@@ -46,20 +46,20 @@ namespace BMSTU {
                 throw std::logic_error("Not as int");
             return std::get<int>(*this);
         }
-///////////?????????????//////////////
-//        bool IsPureDouble() const {
-//            return std::holds_alternative<>()
-//        }
+
+        bool IsPureDouble() const {
+            return std::holds_alternative<double>(*this);
+        };
 
         bool IsDouble() const {
-            return std::holds_alternative<double>(*this);
+            return IsPureDouble() || IsInt();
         }
 
         double AsDouble() const {
             if (!IsDouble()){
                 throw std::logic_error(" Not as Double");
             }
-            return std::get<double>(*this);
+            return IsPureDouble() ? std::get<double>(*this) : AsInt(); // manager
         }
 
         bool IsBool() const{
@@ -137,64 +137,7 @@ namespace BMSTU {
 
 
     };
-
-///TODO/??????????????????
-
-//    Node LoadString(std::istream &input){
-//        auto it = std::istreambuf_iterator<char>(input);
-//        auto end = std::istreambuf_iterator<char>();
-//        std::string s;
-//        while (true){
-//            if(it == end){
-//                throw ParsingError("String parsing error");
-//            }
-//            const char ch = *it;
-//            if(ch == '"'){
-//                ++it;
-//                break;
-//            }
-//            else if(ch == '\\'){
-//                ++it;
-//                if(it == end){
-//                    throw ParsingError("String parsing error");
-//                }
-//                const char escaped_char = *it;
-//                switch (escaped_char) {
-//                    case 'n':
-//                        s.push_back('\n');
-//                        break;
-//                    case 't':
-//                        s.push_back('\t');
-//                        break;
-//                    case 'r':
-//                        s.push_back('\r');
-//                        break;
-//                    case '"':
-//                        s.push_back('"');
-//                        break;
-//                    case '\\':
-//                        s.push_back('\\');
-//                        break;
-//                    default:
-//                        throw ParsingError("Unrecognized escape sequence \""s + escaped_char + "\""s);
-//                }
-//            } else if (ch == '\n' || ch == '\r') throw ParsingError("Unexpected end of line"s);
-//            else s.push_back(ch);
-//            ++it;
-//        }
-//        return Node(std::move(s));
-//    };
-
-//////////////
-// if (ch == '"') {
-//                if(++it != end){
-//                    s.push_back('"');
-//                    s.push_back(*it);
-//                } else
-//                break;
-
-
-///////////////////////////
+    
     inline bool operator==(const Node &lhs, const Node &rhs){
         return lhs.Get_value() == rhs.Get_value();
     }
@@ -312,37 +255,34 @@ namespace BMSTU {
         }
     }
 
-    /////////////////?????????????????????///////////////
     Node LoadNumber(std::istream &input) {
         std::string parsed_num;
-        ///лямба-подфункция
-        ///читаем чарик
 
         // std::function<void(std::string, std::istream&)>;
         auto read_char = [&parsed_num, &input] {
             parsed_num += static_cast<char>(input.get());
-            if (!input) {
-                throw ParsingError("failed to read number from stream");
-            }
         };
         ///читаем чарик-цифру
         auto read_digit = [&input, read_char] {
             if (!std::isdigit(input.peek())) {
                 throw ParsingError("no digit");
             }
+            while(std::isdigit(input.peek())){
+                read_char();
+            }
         };
-
-        if (input.peek() == '-') {
+        ///парсим знак числа
+        if (input.peek() == '-' || input.peek() == '+') {
             read_char();
         }
-        ///парсим целую часть числа
+        ///ищем точку если число дробное
         if (input.peek() == '0') {
             read_char();
         } else {
             read_digit();
         }
-        bool is_int = true;
-
+        bool is_int = true; ///стринг числа инт
+        ///читаем дробную часть
         if (input.peek() == '.') {
             read_char();
             read_digit();
@@ -356,22 +296,24 @@ namespace BMSTU {
                 read_char();
             }
             read_digit();
-            is_int = false;
+            is_int = false; ///число с плавающей точкой чтобы парсить экспоненту
         }
 
-        try {
-            if (is_int) {
-                try {
-                    return std::stoi(parsed_num);
-                }
-                catch (...) {
-
-                }
-            }
+        if(is_int){
+            return std::stoi(parsed_num);
+        }else {
             return std::stod(parsed_num);
-        } catch (...) {
-            throw ParsingError(" number error ");
         }
+
+//        try {
+//            if(is_int){
+//                return std::stoi(parsed_num);
+//            }else {
+//                return std::stod(parsed_num);
+//            }
+//        } catch (...) {
+//            throw ParsingError(" number error ");
+//        }
     }
 
     Node LoadNode(std::istream &input) {
@@ -425,13 +367,15 @@ namespace BMSTU {
         return l.Get_root() != r.Get_root();
 
     }
+
+
 ///структура Print_context для табуляций JSON
 
     struct PrintContext {
 
         std::ostream &out;
-        int indent_step = 4;
-        int indent = 4;
+        int indent = 0;
+        int indent_step = 3;
 
         void Print_indent() const {
             for (int i = 0; i < indent; ++i) {
@@ -440,13 +384,10 @@ namespace BMSTU {
         }
 
         PrintContext Indented() const {
-            return {out, indent, indent_step};
+            return {out, indent+indent_step, indent_step};
         }
-
-
     };
-
-
+    
     ///Print
 
     void PrintNode(const Node &node, const PrintContext &ctx);
@@ -457,11 +398,11 @@ namespace BMSTU {
         for (const char c: value) {
             switch (c) {
                 case '\r': {
-                    out << "\r"s;
+                    out << "\r";
                     break;
                 }
                 case '\n': {
-                    out << "\n"s;
+                    out << "\n";
                     break;
                 }
                 case '"': {
@@ -514,7 +455,7 @@ namespace BMSTU {
                 out << ",\n"s;
             }
             inner_ctx.Indented();
-            ctx.Print_indent();        ///????????
+            inner_ctx.Print_indent();
             PrintNode(node, inner_ctx);
         }
         out.put('\n');
@@ -527,14 +468,8 @@ namespace BMSTU {
     void PrintValue<Dict>(const Dict &nodes, const PrintContext &ctx) {
         std::ostream &out = ctx.out;
         out << "{\n"s;
-        bool first = true;
         auto inner_ctx = ctx.Indented();
         for (const auto &[key, node]: nodes) {
-            if (first) {
-                first = false;
-            } else {
-                out << ",\n"s;
-            }
             inner_ctx.Print_indent();
             PrintString(key, ctx.out);
             out << ": "s;
@@ -545,7 +480,7 @@ namespace BMSTU {
         ctx.Print_indent();
         out << "}"s;
     }
-//////////////////????////////////////////
+
     void PrintNode(const Node &node, const PrintContext &ctx) {
         std::visit([&ctx](const auto &value) {
             PrintValue(value, ctx);
@@ -555,8 +490,7 @@ namespace BMSTU {
     void Print(const Document &doc, std::ostream &output) {
         PrintNode(doc.Get_root(), PrintContext{output});
     }
-
-
+    
     Document Load(std::istream &input){
         return Document(LoadNode(input));
     }
