@@ -7,6 +7,7 @@
 #include <sstream>
 #include <fstream>
 
+
 namespace BMSTU {
     using namespace std;
     using namespace std::string_literals;
@@ -138,7 +139,7 @@ namespace BMSTU {
 
 
     };
-    
+
     inline bool operator==(const Node &lhs, const Node &rhs){
         return lhs.Get_value() == rhs.Get_value();
     }
@@ -151,54 +152,104 @@ namespace BMSTU {
 
     Node LoadNode(std::istream &input);
 
-    Node LoadString(std::istream &input) {
-        auto iterator = std::istreambuf_iterator<char>(input);
-        auto end = std::istreambuf_iterator<char>();
-        std::string my_string;
-        while (iterator != end) {
-            const char ch = *iterator;
-            if (iterator != end){
-                    switch (ch) {
-                        case '\"':{
-                            if (++iterator != end){
-//                            my_string.push_back('"');
-//                            my_string.push_back(*iterator);
-                            iterator = end;
-                            }
-                            break;
-                        }
+//    Node LoadString(std::istream &input) {
+//        auto iterator = std::istreambuf_iterator<char>(input);
+//        auto end = std::istreambuf_iterator<char>();
+//        std::string my_string;
+//        while (iterator != end) {
+//            const char ch = *iterator;
+//            if (iterator != end){
+//                    switch (ch) {
+//                        case '\"':{
+//                            if (++iterator != end){
+////                            my_string.push_back('"');
+////                            my_string.push_back(*iterator);
+//                            iterator = end;
+//                            }
+//                            break;
+//                        }
+//
+//                        case '\\':{
+//                            my_string.push_back('\\');
+//                            break;
+//                        }
+//                        case '\n':{
+//                            my_string.push_back('\n');
+//                            break;
+//                        }
+//                        case '\t':{
+//                            my_string.push_back('\t');
+//                            break;
+//                        }
+//                        case '\r':{
+//                            my_string.push_back('\r');
+//                            break;
+//                        }
+//                        default:{
+//                            my_string.push_back(ch);
+//                            break;
+//                        }
+//                    }
+//                } else if(iterator == end){
+//                throw ParsingError("string parsing error");
+//            } else my_string.push_back(ch);
+//            if (iterator == end){
+//                break;
+//            } else
+//            ++iterator;
+//            }
+//        return Node(std::move(my_string));
+//        }
 
-                        case '\\':{
-                            my_string.push_back('\\');
-                            break;
-                        }
-                        case '\n':{
-                            my_string.push_back('\n');
-                            break;
-                        }
-                        case '\t':{
-                            my_string.push_back('\t');
-                            break;
-                        }
-                        case '\r':{
-                            my_string.push_back('\r');
-                            break;
-                        }
-                        default:{
-                            my_string.push_back(ch);
-                            break;
-                        }
-                    }
-                } else if(iterator == end){
-                throw ParsingError("string parsing error");
-            } else my_string.push_back(ch);
-            if (iterator == end){
-                break;
-            } else
-            ++iterator;
+Node LoadString(std::istream &input){
+    std::string parsed_num;
+    while (true){
+        char c = input.get();
+        switch (c) {
+            case '"':{
+                return parsed_num;
             }
-        return Node(std::move(my_string));
+            case '\\':{
+                char escape_symb = input.get();
+                switch (escape_symb) {
+                    case 'n':{
+                        parsed_num.push_back('\n');
+                        break;
+                    }
+                    case 't':{
+                        parsed_num.push_back('\t');
+                        break;
+                    }
+                    case 'r':{
+                        parsed_num.push_back('\r');
+                        break;
+                    }
+                    case '"':{
+                        parsed_num.push_back('\"');
+                        break;
+                    }
+                    case '\\':{
+                        parsed_num.push_back('\\');
+                        break;
+                    }
+                    default:{
+                        throw ParsingError("Unknown \\"s + escape_symb + " escape symb"s);
+                    }
+                }
+                break;
+            }
+            case '\n':{
+                [[fallthrough]];
+            }
+            case '\r':{
+                throw ParsingError("Unexpected EOL");
+            }
+            default:{
+                parsed_num.push_back(c);
+            }
         }
+    }
+}
 
     std::string LoadLiteral(std::istream &input) {
         std::string s;
@@ -226,15 +277,20 @@ namespace BMSTU {
             if (c == '"') {
                 std::string key = LoadString(input).AsString();
                 if (input >> c && c == ':') {
+                    if (input.peek() == '}'){
+                        throw ParsingError("No value");
+                        break;
+                    }
                     dict.emplace(std::move(key), LoadNode(input));
                 } else {
-                    throw ParsingError(" : is expected but"s + c + "has been founded"s);
+                    throw ParsingError(" : is expected but "s + c + " has been founded"s);
                 }
             } else if (c == ','){
                 throw ParsingError("can't add more than one VALUE");
             }
         }
-        return dict;
+        if (!input) throw ParsingError("DICT parsing exception");
+        return Node(std::move(dict));
     }
 
     Node LoadBool(std::istream &input) {
@@ -244,7 +300,7 @@ namespace BMSTU {
         } else if (s == "false"s) {
             return Node(false);
         } else {
-            throw ParsingError(" Failed to parse "s + s + "as bool"s);
+            throw ParsingError(" Failed to parse "s + s + " as bool"s);
         }
     }
 
@@ -266,7 +322,7 @@ namespace BMSTU {
         ///читаем чарик-цифру
         auto read_digit = [&input, read_char] {
             if (!std::isdigit(input.peek())) {
-                throw ParsingError("no digit");
+                throw ParsingError("digit Error");
             }
             while(std::isdigit(input.peek())){
                 read_char();
@@ -300,21 +356,21 @@ namespace BMSTU {
             is_int = false; ///число с плавающей точкой чтобы парсить экспоненту
         }
 
-        if(is_int){
-            return std::stoi(parsed_num);
-        }else {
-            return std::stod(parsed_num);
-        }
-
-//        try {
-//            if(is_int){
-//                return std::stoi(parsed_num);
-//            }else {
-//                return std::stod(parsed_num);
-//            }
-//        } catch (...) {
-//            throw ParsingError(" number error ");
+//        if(is_int){
+//            return std::stoi(parsed_num);
+//        }else {
+//            return std::stod(parsed_num);
 //        }
+
+        try {
+            if(is_int){
+                return std::stoi(parsed_num);
+            }else {
+                return std::stod(parsed_num);
+            }
+        } catch (...) {
+            throw ParsingError(" number error ");
+        }
     }
 
     Node LoadNode(std::istream &input) {
@@ -388,7 +444,7 @@ namespace BMSTU {
             return {out, indent+indent_step, indent_step};
         }
     };
-    
+
     ///Print
 
     void PrintNode(const Node &node, const PrintContext &ctx);
@@ -491,7 +547,7 @@ namespace BMSTU {
     void Print(const Document &doc, std::ostream &output) {
         PrintNode(doc.Get_root(), PrintContext{output});
     }
-    
+
     Document Load(std::istream &input){
         return Document(LoadNode(input));
     }
